@@ -3,38 +3,56 @@
 // Installed Utils
 import {useTranslations} from 'next-intl';
 import { useSelector, useDispatch } from 'react-redux';
+import {
+  Box,
+  Flex,
+  Link,
+  Input,
+  Icon,
+  Button,
+  List,
+  Tabs,
+  Image,
+  Group,
+  IconButton
+} from "@chakra-ui/react";
+import {
+  HiExternalLink,
+  HiUserAdd,
+  HiSearch,
+  HiDocumentText,
+  HiTrash
+} from "react-icons/hi";
+import { HStack } from "@chakra-ui/react";
+import {
+  PaginationItems,
+  PaginationNextTrigger,
+  PaginationPrevTrigger,
+  PaginationRoot,
+} from "@/lib/components/ui/pagination";
+import {
+  DialogBody,
+  DialogCloseTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger,
+} from "@/lib/components/ui/dialog";
+import { useState } from 'react';
 
 // App Utils
 import { RootState, AppDispatch } from '@/lib/redux/store';
 import { logout } from '@/lib/redux/features/user/userSlice';
-import {
-    Box,
-    Flex,
-    Link,
-    Input,
-    Icon,
-    Button,
-    List
-  } from "@chakra-ui/react";
-  import {
-    HiExternalLink,
-    HiUserAdd,
-    HiSearch,
-    HiDocumentText
-  } from "react-icons/hi";
-  import { HStack } from "@chakra-ui/react"
-  import {
-    PaginationItems,
-    PaginationNextTrigger,
-    PaginationPrevTrigger,
-    PaginationRoot,
-  } from "@/lib/components/ui/pagination"
 
 // Create the user's threads component
 const Threads = () => {
+  const [openDialog, setDialogOpen] = useState(false);
+
+  const [selectedNetwork, setSelectedNetwork] = useState<string | null>("facebook")
 
     // Get the words by group
-    const t = useTranslations('auth');
+    const t = useTranslations('account');
 
     // Get the Redux's dispatch
     const dispatch = useDispatch<AppDispatch>();
@@ -42,8 +60,66 @@ const Threads = () => {
     // Get the user's info
     const { user } = useSelector((state: RootState) => state.user);
 
+    /**
+     * Connect social accounts
+     * 
+     * @param network 
+     */
+    const connectAccounts = (network: string) => {
+
+      // Set popup's url
+      const popup_url = process.env.NEXT_PUBLIC_API_URL + 'networks/connect/' + network;
+
+      // Get popup's position from left
+      const from_left =
+        window.screenLeft != undefined ? window.screenLeft : window.screenX;
+
+      // Get popup's width
+      const width = window.innerWidth
+        ? window.innerWidth
+        : document.documentElement.clientWidth
+          ? document.documentElement.clientWidth
+          : screen.width;
+
+      // Get popup's height
+      const height = window.innerHeight
+        ? window.innerHeight
+        : document.documentElement.clientHeight
+          ? document.documentElement.clientHeight
+          : screen.height;
+
+      // Calculate new left poition
+      const left = width / 2 - width / 2 / 2 + from_left;
+
+      // Set default top position
+      const top = 50;
+
+      // Open popup
+      const networkWindow = window.open(
+        popup_url,
+        'Connect Account',
+        'scrollbars=yes, width=' +
+          width / 2 +
+          ', height=' +
+          height / 1.3 +
+          ', top=' +
+          top +
+          ', left=' +
+          left,
+      );
+
+      // Set focus
+      if (typeof window.focus === 'function' && networkWindow) {
+        networkWindow.focus();
+      }
+
+    };
+
+    /**
+     * Handle logout button click
+     */
     const handleLogout = () => {
-        dispatch(logout());
+      dispatch(logout());
     };
 
     return (
@@ -76,13 +152,11 @@ const Threads = () => {
                 onClick={handleLogout}
               >
                 {t('sign_out')}
-                <Icon
-                  verticalAlign="top"
+                <Box verticalAlign="top"
                   marginLeft="2px"
-                  fontSize="xl"
-                  >
+                  fontSize="xl">
                   <HiExternalLink />
-                </Icon>
+                </Box>
               </Link>
           </Flex>
         </Box>
@@ -91,14 +165,14 @@ const Threads = () => {
             justifyContent={'space-between'}
             bgColor={ 'rgba(255, 255, 255, 0.1)' }
           >
-            <Icon
+            <Box
               verticalAlign="top"
               marginTop="9px"
               marginLeft="10px"
               fontSize="xl"
               >
               <HiSearch />
-            </Icon>          
+            </Box>          
             <Input
               type="text"
               placeholder="Search for threads ..."
@@ -107,24 +181,70 @@ const Threads = () => {
               fontFamily="input"
               fontSize="14px"
             />
-            <Button
-              paddingX="20px"
-              paddingY="10px"
-              borderLeft="1px solid"
-              borderRadius={0}
-              borderColor="rgba(0, 0, 0, 0.1)"
-              fontFamily="button"
-              fontSize="14px"
-            >
-              <Icon
-                verticalAlign="top"
-                marginLeft="2px"
-                fontSize="xl"
+            <DialogRoot lazyMount open={openDialog} onOpenChange={(e) => setDialogOpen(e.open)}>
+              <DialogTrigger asChild>
+                <Button
+                  paddingX="20px"
+                  paddingY="10px"
+                  borderLeft="1px solid"
+                  borderRadius={0}
+                  borderColor="rgba(0, 0, 0, 0.1)"
+                  fontFamily="button"
+                  fontSize="14px"
                 >
-                <HiUserAdd />
-              </Icon>
-              Accounts
-            </Button>
+                  <Box
+                    verticalAlign="top"
+                    marginLeft="2px"
+                    fontSize="xl"
+                    >
+                    <HiUserAdd />
+                  </Box>
+                  { t('accounts') }
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent>
+                <DialogHeader paddingY="10px" paddingX="15px">
+                  <DialogTitle fontFamily="header" fontSize="16px">
+                    { t('accounts') }
+                  </DialogTitle>
+                </DialogHeader>
+                <DialogBody paddingX="15px">
+                  <Tabs.Root orientation="vertical" value={selectedNetwork} onValueChange={(e) => setSelectedNetwork(e.value)} className="networks-tabs">
+                    <Tabs.List>
+                      <Tabs.Trigger value="facebook">
+                        <Image src="/fb.png" alt="Facebook Icon" />
+                      </Tabs.Trigger>
+                      <Tabs.Trigger value="instagram">
+                        <Image src="/in.png" alt="Instagram Icon" />
+                      </Tabs.Trigger>
+                    </Tabs.List>
+
+                    <Tabs.Content value="facebook">
+                      <Button bgColor="#0866ff" color="#FFFFFF" width="100%" onClick={() => connectAccounts('facebook')}>
+                        { t('connect_pages') }
+                      </Button>
+                      <Box>
+                        <Group attached className="network-account">
+                          <Button variant="outline" size="sm">
+                            Button
+                          </Button>
+                          <Box>
+                            <HiTrash size="sm" />
+                          </Box>
+                        </Group>
+                      </Box>
+                    </Tabs.Content>
+                    <Tabs.Content value="instagram">
+                      <Button bgColor="#405DE6" color="#FFFFFF" width="100%" onClick={() => connectAccounts('instagram')}>
+                        { t('connect_accounts') }
+                      </Button>
+                    </Tabs.Content>
+                  </Tabs.Root>
+                </DialogBody>
+                <DialogCloseTrigger />
+              </DialogContent>
+            </DialogRoot>
           </Flex>
         </Box>
         <Box px={4}>
@@ -132,14 +252,15 @@ const Threads = () => {
             <List.Item>
               <Link className="new-message">
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 1
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -151,14 +272,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 2
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -170,14 +292,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 3
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -189,14 +312,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 4
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -208,14 +332,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 5
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -227,14 +352,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 6
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -246,14 +372,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 7
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -265,14 +392,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 8
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -284,14 +412,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 9
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">
@@ -303,14 +432,15 @@ const Threads = () => {
             <List.Item>
               <Link>
                 <Flex justifyContent={'space-between'}>
-                  <Box>
-                    <Icon
-                      verticalAlign="sub"
+                  <Box paddingTop="3px">
+                    <Box
+                      display="inline-block"
+                      verticalAlign="top"
                       marginRight="5px"
                       fontSize="xl"
                     >
                       <HiDocumentText />
-                    </Icon>
+                    </Box>
                     Item 10
                   </Box>
                   <Box lineHeight="25px" fontSize="13px" color="grey.100">

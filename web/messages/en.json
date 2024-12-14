@@ -25,7 +25,6 @@
       "create_account": "Create Account",
       "my_information": "My Information",
       "id": "ID",
-      "sign_out": "Sign Out",
       "reset_password": "Reset Password",
       "reset": "Reset",
       "do_you_remember_the_password": "Do you remember the password?",
@@ -35,7 +34,15 @@
       "repeat_password": "Repeat Password",
       "save": "Save",
       "passwords_must_match": "Passwords must match.",
-      "loading": "Loading ...",
-      "threads": "Threads"
+      "loading": "Loading ..."
+    },
+    "account": {
+      "sign_out": "Sign Out",
+      "accounts": "Accounts",
+      "threads": "Threads",
+      "threads_description": "User's threads reloaded in real time.",
+      "connect_pages": "Connect Pages",
+      "connect_accounts": "Connect Accounts",
+      "connect_accounts_description": "Connect your social accounts."
     }
 }

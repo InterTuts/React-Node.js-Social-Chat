@@ -2,13 +2,17 @@
 
 /* Reset styles for form elements */
 input, textarea, select, button, a {
-    margin: 0;
     border: none;
     outline: none;
     font: inherit;
     background: none;
     color: inherit;
     box-sizing: border-box;
+}
+
+input, textarea, select {
+    margin: 0;
+    padding: 0 15px;
 }
 
 /* Reset specific states */
