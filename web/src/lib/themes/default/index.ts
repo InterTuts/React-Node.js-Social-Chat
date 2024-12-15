@@ -81,16 +81,20 @@ const defaultTheme = createSystem(defaultConfig, {
                 logo: { value: `'Coiny', sans-serif` },
                 button: { value: `'Roboto', sans-serif` },
                 input: { value: `'Roboto', sans-serif` },
-                header: { value: `'Karla', sans-serif` }
+                header: { value: `'Karla', sans-serif` },
+                message: { value: `'Roboto', sans-serif` }
             },
             colors: {
-                dark: {
-                    100: { value: "#222222" }
+                blue: {
+                    100: { value: "#eff6ff" }
                 },
                 brown: {
                     100: { value: "#e6e6e6" },
                     200: { value: "#636363" }
                 },
+                dark: {
+                    100: { value: "#222222" }
+                },                
                 green: {
                     100: { value: "#679186" },
                     200: { value: "#eaf4f4" },
@@ -98,7 +102,10 @@ const defaultTheme = createSystem(defaultConfig, {
                 },
                 grey: {
                     100: { value: "#8c9191" }
-                },                                
+                },
+                red: {
+                    100: { value: "#fef2f2" }
+                },                          
                 violet: {
                     100: { value: "#280e52" },
                     200: { value: "#3d348b" }

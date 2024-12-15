@@ -43,6 +43,9 @@
       "threads_description": "User's threads reloaded in real time.",
       "connect_pages": "Connect Pages",
       "connect_accounts": "Connect Accounts",
-      "connect_accounts_description": "Connect your social accounts."
+      "connect_accounts_description": "Connect your social accounts.",
+      "error_fetching_data": "Error fetching data",
+      "save_accounts": "Save Accounts",
+      "save_accounts_description": "Save accounts and subscribe to webhooks."
     }
 }

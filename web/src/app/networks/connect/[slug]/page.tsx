@@ -1,8 +1,12 @@
 // System Utils
-import type { Metadata } from 'next';
+import { JSX } from 'react';
 
 // Installed Utils
+import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+
+// App utils
+import Connect from '@/lib/components/networks/Connect';
 
 // Page's Title and Description
 export async function generateMetadata(): Promise<Metadata> {
@@ -40,6 +44,6 @@ export default async function Page({ params }: { params: { slug: string } } ): P
   // Sanitize the slug
   const sanitized_slug = sanitizeSlug(slug);
 
-  return (<p>{ sanitized_slug}</p>);
+  return <Connect slug={sanitized_slug} />;
 
-}
+};

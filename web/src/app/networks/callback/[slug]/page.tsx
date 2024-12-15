@@ -1,26 +1,49 @@
 // System Utils
-import type { Metadata } from 'next';
+import { JSX } from 'react';
 
 // Installed Utils
+import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+
+// App Utils
+import Callback from '@/lib/components/networks/Callback';
 
 // Page's Title and Description
 export async function generateMetadata(): Promise<Metadata> {
-    // Get the words by group
-    const t = await getTranslations('account');  
-    return {
-      title: t('threads'),
-      description: t('threads_description')
-    }
+  // Get the words by group
+  const t = await getTranslations('account');  
+  return {
+    title: t('save_accounts'),
+    description: t('save_accounts_description')
   }
-
-// App Utils
-import Threads from '@/lib/components/user/Threads';
-
-export default async function Page() {
-
-    return (<>
-      <p>2</p>
-    </>);
-
 }
+
+/**
+ * Sanitize the slug
+ * 
+ * @param slug 
+ * 
+ * @returns safe slug 
+ */
+const sanitizeSlug = (slug: string): string => {
+  return slug.replace(/[^a-zA-Z0-9-_]/g, '');
+}
+
+/**
+ * Save accounts page
+ * 
+ * @param params
+ * 
+ * @returns promise with jsx content
+ */
+export default async function Page({ params }: { params: { slug: string } } ): Promise<JSX.Element> {
+
+  // Extract the slug
+  const { slug } = params;
+
+  // Sanitize the slug
+  const sanitized_slug = sanitizeSlug(slug);
+
+  return <Callback slug={sanitized_slug} />;
+
+};

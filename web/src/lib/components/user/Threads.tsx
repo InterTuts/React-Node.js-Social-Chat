@@ -8,13 +8,11 @@ import {
   Flex,
   Link,
   Input,
-  Icon,
   Button,
   List,
   Tabs,
   Image,
-  Group,
-  IconButton
+  Group
 } from "@chakra-ui/react";
 import {
   HiExternalLink,

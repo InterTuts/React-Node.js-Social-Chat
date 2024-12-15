@@ -242,4 +242,188 @@ const registerWithSocial = async (req: Request, res: Response) => {
   }
 };
 
-export { socialConnect, getSocialCode, registerWithSocial };
+/**
+ * Register User Accounts
+ *
+ * @param Request req
+ * @param Response res
+ */
+const connectAccounts = async (req: Request, res: Response) => {
+
+    // Get the dynamic parameter attribute
+    const slug = req.params.slug;
+
+    // Verify if slug is supported
+    if ( slug === 'facebook' ) {
+
+      // Permissions to request
+      const permissions = [
+        'pages_show_list',
+        'pages_manage_posts',
+        'business_management'
+      ];
+
+      // Prepare parameters for URL
+      const params = new URLSearchParams({
+        client_id: process.env.FACEBOOK_APP_ID as string,
+        state: Math.floor(Date.now() / 1000).toString(),
+        response_type: 'code',
+        redirect_uri: `${req.protocol}://${req.get('host')}/networks/callback/facebook`,
+        scope: permissions.join(',')
+      });
+
+      // Set URL
+      const theUrl = `https://www.facebook.com/${process.env.FACEBOOK_API_VERSION}/dialog/oauth?${params.toString()}`;
+
+      // Return the URL as a response
+      res.status(200).json({
+          success: true,
+          content: theUrl
+      });
+
+    } else {
+
+      // Return failed response
+      res.status(200).json({
+        success: false,
+        message: i18n.__('invalid_slug_provided')
+      });
+
+    }
+
+};
+
+/**
+ * Save User Accounts
+ *
+ * @param Request req
+ * @param Response res
+ */
+const saveAccounts = async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(200).json({ errors: errors.array() });
+  }
+
+  // Get the user data
+  const { code } = req.body;
+
+  // Get the dynamic parameter attribute
+  const slug = req.params.slug;
+
+  try {
+
+    // Prepare the fields
+    const fields = {
+      client_id: process.env.FACEBOOK_APP_ID,
+      client_secret: process.env.FACEBOOK_APP_SECRET,
+      grant_type: 'authorization_code',
+      redirect_uri: 'https://wp.midrub.com/callback.php', //`${req.protocol}://${req.get('host')}/networks/callback/facebook`,
+      code: code,
+    };
+
+    // Send the POST request to Facebook's OAuth endpoint
+    const url = `https://graph.facebook.com/${process.env.FACEBOOK_API_VERSION}/oauth/access_token`;
+
+    // Set authorization code for an access token
+    const response:{
+      data: {
+        access_token: string
+      },
+      status: number
+    } = await axios.post(url, null, {
+      params: fields,
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      } 
+    });
+
+    // Verify if the response status is correct
+    if (response.status === 200) {
+      
+      // Get the access token
+      const accessToken = response.data.access_token;
+
+      // Url to fetch Facebook Pages
+      const requestUrl = `https://graph.facebook.com/${process.env.FACEBOOK_API_VERSION}/me/accounts`;
+
+      // Get the Facebook Pages
+      const accountsResponse: any = await axios.get(requestUrl, {
+        params: {
+          limit: 500,
+          access_token: accessToken
+        },
+      });
+      console.log(accountsResponse.data);
+      
+      const accounts = accountsResponse.data.data || [];
+
+      /*if (accounts.length > 0) {
+        const userInstance = await CustomUser.findById(req.user.id); // Replace with your ORM's find method
+        const networks = await NetworksModel.findAll({ where: { userId: req.user.id, networkName: 'facebook_pages' } });
+
+        const networksMap = new Map(networks.map(network => [network.netId, network]));
+        const networksSave = [];
+
+        for (const account of accounts) {
+          if (networksMap.has(account.id)) {
+            const existingNetwork = networksMap.get(account.id);
+            existingNetwork.name = account.name;
+            existingNetwork.token = account.access_token;
+          } else {
+            networksSave.push({
+              userId: userInstance.id,
+              networkName: 'facebook_pages',
+              netId: account.id,
+              name: account.name,
+              token: account.access_token,
+            });
+          }
+        }
+
+        // Delete cache
+        cache.del(`user_last_networks_${req.user.id}`);
+
+        if (networks.length > 0) {
+          // Update existing networks
+          await NetworksModel.bulkUpdate(Array.from(networksMap.values()), ['name', 'token']);
+        }
+
+        if (networksSave.length > 0) {
+          // Save new networks
+          await NetworksModel.bulkCreate(networksSave);
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'All selected pages were connected successfully.',
+        });
+      }
+
+      return res.status(200).json({
+        success: false,
+        message: 'No pages were found.',
+      });*/
+
+    }
+
+    /*const errorMessage = response.data.error?.message || 'Unknown error occurred.';
+    
+    return res.status(200).json({
+      success: false,
+      message: errorMessage,
+    });
+        
+*/
+    } catch (error) {
+      // Return failed response
+      return res.status(200).json({
+        success: false,
+        message: (error instanceof Error)?error.message:i18n.__('an_unknown_error_occurred')
+      });
+    }
+
+};
+
+export { socialConnect, getSocialCode, registerWithSocial, connectAccounts, saveAccounts };

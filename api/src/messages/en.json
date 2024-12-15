@@ -25,5 +25,7 @@
   "an_internal_error_occurred": "An internal error occurred.",
   "user_id_not_found": "User ID not found in the response.",
   "access_token_not_found": "Access token not found in the response.",
-  "an_error_occurred_while_creating_reset_link": "An error occurred while generated the reset password link."
+  "an_error_occurred_while_creating_reset_link": "An error occurred while generated the reset password link.",
+  "invalid_slug_provided": "Invalid slug provided.",
+  "authorization_code_not_valid": "The authorization code is not valid."
 }
