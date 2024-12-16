@@ -7,7 +7,9 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
 // App Utils
+import AuthenticatedRequest from '../types/ExpressRequest';
 import user from '../models/userModel';
+import networks from '../models/networksModel';
 import i18n from '../i18n.config';
 
 // Define AxiosError if it's not available in your current version
@@ -299,12 +301,16 @@ const connectAccounts = async (req: Request, res: Response) => {
  * @param Request req
  * @param Response res
  */
-const saveAccounts = async (req: Request, res: Response) => {
+const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(200).json({ errors: errors.array() });
   }
 
+  // Get the user data
+  const { user } = req;
+
+  console.log(user?._id);
   // Get the user data
   const { code } = req.body;
 
@@ -355,74 +361,72 @@ const saveAccounts = async (req: Request, res: Response) => {
           access_token: accessToken
         },
       });
-      console.log(accountsResponse.data);
-      
+
+      // Extract the Facebook Pages
       const accounts = accountsResponse.data.data || [];
 
-      /*if (accounts.length > 0) {
-        const userInstance = await CustomUser.findById(req.user.id); // Replace with your ORM's find method
-        const networks = await NetworksModel.findAll({ where: { userId: req.user.id, networkName: 'facebook_pages' } });
+      // Verify if accounts exists
+      if (accounts.length > 0) {
 
-        const networksMap = new Map(networks.map(network => [network.netId, network]));
-        const networksSave = [];
-
-        for (const account of accounts) {
-          if (networksMap.has(account.id)) {
-            const existingNetwork = networksMap.get(account.id);
-            existingNetwork.name = account.name;
-            existingNetwork.token = account.access_token;
-          } else {
-            networksSave.push({
-              userId: userInstance.id,
-              networkName: 'facebook_pages',
-              netId: account.id,
+        // Prepare the accounts to save or update
+        const accountsList = accounts.map((account: { id: number; access_token: string; name: string; }) => ({
+          updateOne: {
+            filter: {
+              user: user?._id,
+              network_name: 'facebook_pages',
+              net_id: account.id
+            },
+            update: { $set: {
               name: account.name,
-              token: account.access_token,
+              token: account.access_token
+            }},
+            upsert: true
+          },
+        }));
+
+        // Save or update the accounts list
+        networks
+        .bulkWrite(accountsList)
+        .then(() => {
+          // Return success response
+          if (!res.headersSent) {
+            return res.status(201).json({
+              success: true,
+              message: i18n.__('facebook_pages_were_connected_successfully'),
             });
           }
-        }
-
-        // Delete cache
-        cache.del(`user_last_networks_${req.user.id}`);
-
-        if (networks.length > 0) {
-          // Update existing networks
-          await NetworksModel.bulkUpdate(Array.from(networksMap.values()), ['name', 'token']);
-        }
-
-        if (networksSave.length > 0) {
-          // Save new networks
-          await NetworksModel.bulkCreate(networksSave);
-        }
-
-        return res.status(200).json({
-          success: true,
-          message: 'All selected pages were connected successfully.',
+        })
+        .catch((error) => {
+          // Return failure response
+          if (!res.headersSent) {
+            return res.status(500).json({
+              success: false,
+              message: error instanceof Error ? error.message : i18n.__('an_unknown_error_occurred'),
+            });
+          }
         });
+
       }
 
       return res.status(200).json({
         success: false,
-        message: 'No pages were found.',
-      });*/
+        message: i18n.__('no_facebook_pages_were_found')
+      });
 
     }
 
-    /*const errorMessage = response.data.error?.message || 'Unknown error occurred.';
-    
     return res.status(200).json({
       success: false,
-      message: errorMessage,
+      message: i18n.__('an_unknown_error_occurred')
+    });    
+
+  } catch (error) {
+    // Return failed response
+    return res.status(200).json({
+      success: false,
+      message: (error instanceof Error)?error.message:i18n.__('an_unknown_error_occurred')
     });
-        
-*/
-    } catch (error) {
-      // Return failed response
-      return res.status(200).json({
-        success: false,
-        message: (error instanceof Error)?error.message:i18n.__('an_unknown_error_occurred')
-      });
-    }
+  }
 
 };
 

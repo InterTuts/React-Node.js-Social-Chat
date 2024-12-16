@@ -27,5 +27,7 @@
   "access_token_not_found": "Access token not found in the response.",
   "an_error_occurred_while_creating_reset_link": "An error occurred while generated the reset password link.",
   "invalid_slug_provided": "Invalid slug provided.",
-  "authorization_code_not_valid": "The authorization code is not valid."
+  "authorization_code_not_valid": "The authorization code is not valid.",
+  "no_facebook_pages_were_found": "No facebook pages were found.",
+  "facebook_pages_were_connected_successfully": "The facebook pages were connected successfully."
 }
