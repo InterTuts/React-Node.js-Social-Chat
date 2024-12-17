@@ -56,11 +56,20 @@ export const networksSlotRecipe = defineSlotRecipe({
                 backgroundColor: "#dfe0e2 !important"
             },
             "& .network-account button": {
-                fontFamily: `var(--font-fallback) !important`,
+                padding: "5px 10px !important",
+                height: "inherit",
+                fontFamily: "'Roboto', sans-serif !important",
+                fontSize: "13px !important"
             },           
             "& .network-account button:last-child": {
                 borderLeft: "1px solid #8c9191 !important"
-            }            
+            },
+            "& .no-accounts-found": {
+                marginTop: "15px",
+                padding: "10px 15px !important",
+                backgroundColor: "#f5f7f7 !important",
+                color: "#222222 !important"
+            }                      
         },
         list: {
             backgroundColor: "#fdfdfd !important"

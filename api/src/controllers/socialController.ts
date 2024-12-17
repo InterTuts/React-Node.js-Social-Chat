@@ -310,7 +310,6 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
   // Get the user data
   const { user } = req;
 
-  console.log(user?._id);
   // Get the user data
   const { code } = req.body;
 
@@ -324,7 +323,7 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
       client_id: process.env.FACEBOOK_APP_ID,
       client_secret: process.env.FACEBOOK_APP_SECRET,
       grant_type: 'authorization_code',
-      redirect_uri: 'https://wp.midrub.com/callback.php', //`${req.protocol}://${req.get('host')}/networks/callback/facebook`,
+      redirect_uri: `${req.protocol}://${req.get('host')}/networks/callback/facebook`,
       code: code,
     };
 
@@ -427,7 +426,46 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
       message: (error instanceof Error)?error.message:i18n.__('an_unknown_error_occurred')
     });
   }
+};
+
+/**
+ * Read all networks and their accounts
+ *
+ * @param Request req
+ * @param Response res
+ */
+const networksList = async (req: AuthenticatedRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(200).json({ errors: errors.array() });
+  }
+
+  // Get the user data
+  const { user } = req;
+
+  // Get all networks with accounts
+  networks.find({ user: user })
+  .then(networksList => {
+    // Verify if accounts exists
+    if ( networksList.length > 0 ) {
+      return res.status(200).json({
+        success: true,
+        content: networksList
+      }); 
+    } else {
+      return res.status(200).json({
+        success: false,
+        message: i18n.__('no_accounts_were_found')
+      });      
+    }
+  })
+  .catch(error => {
+    return res.status(200).json({
+      success: false,
+      message: error instanceof Error ? error.message : i18n.__('an_unknown_error_occurred')
+    });
+  });
 
 };
 
-export { socialConnect, getSocialCode, registerWithSocial, connectAccounts, saveAccounts };
+export { socialConnect, getSocialCode, registerWithSocial, connectAccounts, saveAccounts, networksList };

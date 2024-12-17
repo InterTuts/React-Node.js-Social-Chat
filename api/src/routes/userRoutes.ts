@@ -6,7 +6,7 @@ import { body, param, validationResult } from 'express-validator';
 import i18n from '../i18n.config';
 import { userMiddleware } from '../middlewares/AuthenticatedRequest';
 import { userInfo } from '../controllers/userController';
-import { connectAccounts, saveAccounts } from '../controllers/socialController';
+import { connectAccounts, saveAccounts, networksList } from '../controllers/socialController';
 
 // Sanitize the received slug
 const sanitizeSlug = [
@@ -48,5 +48,6 @@ body('code')
     .notEmpty()
     .withMessage(i18n.__('authorization_code_not_valid'))
 ], userMiddleware, saveAccounts);
+userRoute.get('/networks', userMiddleware, networksList);
 
 export default userRoute;

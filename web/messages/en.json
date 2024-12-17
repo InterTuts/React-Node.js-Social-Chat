@@ -46,6 +46,8 @@
       "connect_accounts_description": "Connect your social accounts.",
       "error_fetching_data": "Error fetching data",
       "save_accounts": "Save Accounts",
-      "save_accounts_description": "Save accounts and subscribe to webhooks."
+      "save_accounts_description": "Save accounts and subscribe to webhooks.",
+      "no_accounts_were_found": "No accounts were found.",
+      "no_pages_were_found": "No pages were found."
     }
 }
