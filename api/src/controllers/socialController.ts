@@ -270,7 +270,7 @@ const connectAccounts = async (req: Request, res: Response) => {
         client_id: process.env.FACEBOOK_APP_ID as string,
         state: Math.floor(Date.now() / 1000).toString(),
         response_type: 'code',
-        redirect_uri: 'https://wp.midrub.com/callback.php', //`${process.env.WEBSITE_URL}/networks/callback/facebook`,
+        redirect_uri: `${process.env.WEBSITE_URL}/networks/callback/facebook`,
         scope: permissions.join(',')
       });
 
@@ -323,7 +323,7 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
       client_id: process.env.FACEBOOK_APP_ID,
       client_secret: process.env.FACEBOOK_APP_SECRET,
       grant_type: 'authorization_code',
-      redirect_uri: 'https://wp.midrub.com/callback.php',//`${process.env.WEBSITE_URL}/networks/callback/facebook`,
+      redirect_uri: `${process.env.WEBSITE_URL}/networks/callback/facebook`,
       code: code,
     };
 
