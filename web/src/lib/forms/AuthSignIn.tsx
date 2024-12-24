@@ -57,7 +57,7 @@ const AuthSignIn = () => {
         onSubmit={(values, actions) => {
           actions.setSubmitting(false);
           if (!values.rememberMe) {
-            nookies.set(null, 'delete_jwt', '1', {path: '/'});
+            nookies.set(null, 'delete_jwt', (Date.now()/1000).toString(), {path: '/'});
           } else {
             nookies.destroy(null, 'delete_jwt', {path: '/'});
           }

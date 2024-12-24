@@ -2,7 +2,6 @@
 
 // Installed Utils
 import {useTranslations} from 'next-intl';
-import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
   Flex,
@@ -15,19 +14,11 @@ import {
   Group
 } from "@chakra-ui/react";
 import {
-  HiExternalLink,
   HiUserAdd,
   HiSearch,
   HiDocumentText,
   HiTrash
 } from "react-icons/hi";
-import { HStack } from "@chakra-ui/react";
-import {
-  PaginationItems,
-  PaginationNextTrigger,
-  PaginationPrevTrigger,
-  PaginationRoot,
-} from "@/lib/components/ui/pagination";
 import {
   DialogBody,
   DialogCloseTrigger,
@@ -37,17 +28,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/lib/components/ui/dialog";
-import { useEffect, useState } from 'react';
+import { SetStateAction, useEffect, useRef, useState } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import clsx from 'clsx';
 
 // App Utils
 import type ApiResponse from '@/lib/models/ApiResponse';
 import type { Account } from '@/lib/models/Account';
 import axios, { type AxiosResponse } from '@/axios';
-import { RootState, AppDispatch } from '@/lib/redux/store';
-import { logout } from '@/lib/redux/features/user/userSlice';
+import Pagination from '@/lib/components/ui/pagination';
+import { calculateTime, toTimeStamp } from '@/lib/utils/time';
 
 // Create the user's threads component
-const Threads = () => {
+const Threads = ({ threadId }: { threadId: string }) => {
 
   // Modal status
   const [openDialog, setDialogOpen] = useState(false);
@@ -57,25 +50,82 @@ const Threads = () => {
 
   // Networks list
   const [networksList, setNetworksList] = useState<{
-    facebook_pages: Account[],
-    instagram: Account[],
+    facebook_pages: Account[]
   } | {}>({});
+
+  // Set a hook for loading threads
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set a hook for pagination
+  const [pagination, setPagination] = useState<{
+    page: number,
+    total: number,
+    limit: number,
+    items: React.JSX.Element[]        
+  }>({
+    page: 1,
+    total: 0,
+    limit: 10,
+    items: []
+  });  
+
+  // Create a state variable for the search value
+  const [searchValue, setSearchValue] = useState('');
+
+  // Event handler for input change
+  const handleSearchChange = (e: { target: { value: SetStateAction<string>; }; }) => {
+    setSearchValue(e.target.value);
+    // Get the threads list
+    threadsList(1, e.target.value as string);
+  };
+
+  /**
+   * Sanitize the thread's id
+   * 
+   * @param threadId
+   * 
+   * @returns sanitized thread's id
+   */
+  const sanitizeThreadId = (threadId: string): string => {
+    return threadId?threadId.replace(/[^a-zA-Z0-9-_]/g, ''):'';
+  }
+
+  // Santize the thread's ID
+  const sanitizedThreadId = sanitizeThreadId(threadId);
 
   // Get the words by group
   const t = useTranslations('account');
 
-  // Get the Redux's dispatch
-  const dispatch = useDispatch<AppDispatch>();
-
   // Detect changes for modal
   useEffect(() => {
+
+    // Check if modal is showed with networks
     if ( openDialog ) {
       accountsList();
     }
+
   }, [openDialog]);
 
-  // Get the user's info
-  const { user } = useSelector((state: RootState) => state.user);
+  // Run code after page load
+  useEffect(() => {
+
+    // Get the threads list
+    threadsList(1);
+
+    // Reload the accounts list
+    const reloadAccountsHandler = () => {
+      accountsList();
+    };
+
+    // Listen for the custom event
+    window.addEventListener('reloadAccounts', reloadAccountsHandler);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('reloadAccounts', reloadAccountsHandler);
+    };
+
+  }, []);
 
   /**
    * Connect social accounts
@@ -133,9 +183,99 @@ const Threads = () => {
   };
 
   /**
+   * Get all threads
+   * 
+   * @param number page
+   * @param string search
+   */
+  const threadsList = async (page: number, search: string = '') => {
+
+    // Enable is loading
+    setIsLoading(true);
+
+    // Empty items
+    setPagination((prev) => ({
+      ...prev,
+      total: 0,
+      items: []
+    }));
+
+    try {
+
+      // Get the user's threads
+      const response: AxiosResponse<ApiResponse<
+      {
+        threads: {
+          createdAt: string,
+          label_id: string,
+          _id: string
+        }[],
+        total: number,
+        time: string
+      }
+      >> = await axios.post(`api/user/threads`, {
+        search: search,
+        page: page
+      });
+
+      // Verify if threads exists
+      if ( response.data.success && response.data.content ) {
+
+        // Initialize an array to store the pages JSX elements
+        const items: React.JSX.Element[] = [];
+
+        // List the items
+        for ( const thread of response.data.content.threads ) {
+
+          // Add current page
+          items.push(<List.Item key={ thread._id }>
+            <Link href={ "/user/threads/" + thread._id } className={"new-message" + clsx({ " message-active": (thread._id === sanitizedThreadId) })}>
+              <Flex justifyContent={'space-between'}>
+                <Box paddingTop="3px">
+                  <Box
+                    display="inline-block"
+                    verticalAlign="top"
+                    marginRight="5px"
+                    fontSize="xl"
+                  >
+                    <HiDocumentText />
+                  </Box>
+                  { thread.label_id }
+                </Box>
+                <Box className="message-time">
+                { calculateTime(t, toTimeStamp(thread.createdAt)/1000, toTimeStamp(response.data.content.time)/1000) }
+                </Box>
+              </Flex>
+            </Link>
+          </List.Item>);
+
+        }
+
+        // Set items
+        setPagination((prev) => ({
+          ...prev,
+          total: response.data.content!.total,
+          items: items
+        }));
+        
+      }
+
+    } catch (error) {
+      console.error(error);
+    } finally {
+      // Disable is loading
+      setIsLoading(false);
+    }
+    
+  };
+
+  /**
    * Get all networks and their accounts
    */
   const accountsList = async () => {
+
+    // Empty the accounts
+    setNetworksList({});
 
     try {
 
@@ -155,8 +295,7 @@ const Threads = () => {
         const networks: {[key: string]: 
           Account[]          
         } = {
-          facebook_pages: [],
-          instagram: []
+          facebook_pages: []
         };
 
         // Total number of accounts
@@ -166,11 +305,6 @@ const Threads = () => {
         for (let a = 0; a < totalAccounts; a++) {
           if (response.data.content[a].network_name === 'facebook_pages') {
             networks.facebook_pages.push({
-              id: response.data.content[a]._id,
-              name: response.data.content[a].name
-            });
-          } else if (response.data.content[a].network_name === 'threads') {
-            networks.instagram.push({
               id: response.data.content[a]._id,
               name: response.data.content[a].name
             });
@@ -188,52 +322,67 @@ const Threads = () => {
 
   };
 
+  const deleteAccount = async (network: string, account: string) => {
+
+    try {
+
+      // Get the networks with their accounts
+      const response: AxiosResponse<ApiResponse<string>> = await axios.delete(`api/user/networks/${network}/${account}`);
+      
+      // Verify if the account was deleted successfuly
+      if ( response.data.success ) {
+
+        // Display the success message
+        toast(response.data.message, {
+          style: {
+            background: '#319795',
+            color: '#FFFFFF'
+          }
+        });
+
+        // Delete account
+        accountsList();
+
+        // Reload the threads list
+        threadsList(1, searchValue);
+
+      } else {
+
+        // Display the failed message
+        toast(response.data.message, {
+          style: {
+            background: '#ef476f',
+            color: '#FFFFFF'
+          }
+        });
+
+      }
+
+    } catch (error) {
+      console.error(error);
+    }
+
+  };
+
   /**
-   * Handle logout button click
+   * Navigate through the pages
+   * 
+   * @param number page
    */
-  const handleLogout = () => {
-    dispatch(logout());
+  const changePage = (page: string) => {
+    // Change page number
+    setPagination((prev) => ({
+      ...prev,
+      page: parseInt(page)
+    }));
+    // Get the threads list
+    threadsList(parseInt(page), searchValue);
   };
 
   return (
       <>
-      <Box bg={'white'} px={4}>
-        <Flex h={16} justifyContent={'space-between'}>
-            <Box
-              marginTop={2}
-              fontFamily="logo"
-              fontSize={32}
-              fontWeight={400}
-              color="violet.100"
-            >Chat</Box>
-            <Link
-              alignItems="normal"
-              marginTop="13px"
-              paddingY="7px"
-              paddingX="15px"
-              height={35}
-              fontFamily="button"
-              fontSize="14px"
-              bg="brown.100"
-              color="dark.100"
-              href="#"
-              _hover={{
-                textDecoration: "none",
-                bg: "brown.200",
-                color: "white"
-              }}
-              onClick={handleLogout}
-            >
-              {t('sign_out')}
-              <Box verticalAlign="top"
-                marginLeft="2px"
-                fontSize="xl">
-                <HiExternalLink />
-              </Box>
-            </Link>
-        </Flex>
-      </Box>
       <Box py={4} px={4}>
+        <Toaster />
         <Flex
           justifyContent={'space-between'}
           bgColor={ 'rgba(255, 255, 255, 0.1)' }
@@ -248,11 +397,13 @@ const Threads = () => {
           </Box>          
           <Input
             type="text"
-            placeholder="Search for threads ..."
+            placeholder={ t('search_for_threads') }
             paddingX="15px"
             paddingY="5px"
             fontFamily="input"
             fontSize="14px"
+            value={searchValue}
+            onChange={handleSearchChange}
           />
           <DialogRoot lazyMount open={openDialog} onOpenChange={(e) => setDialogOpen(e.open)}>
             <DialogTrigger asChild>
@@ -288,9 +439,6 @@ const Threads = () => {
                     <Tabs.Trigger value="facebook">
                       <Image src="/fb.png" alt="Facebook Icon" />
                     </Tabs.Trigger>
-                    <Tabs.Trigger value="instagram">
-                      <Image src="/in.png" alt="Instagram Icon" />
-                    </Tabs.Trigger>
                   </Tabs.List>
 
                   <Tabs.Content value="facebook">
@@ -304,31 +452,12 @@ const Threads = () => {
                           <Button variant="outline" size="sm">
                             {account.name}
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => deleteAccount('facebook', account.id)}>
                             <HiTrash style={{ fontSize: "14px" }} />
                           </Button>
                         </Group>
                       ))
                     ) : <Box className="no-accounts-found">{ t('no_pages_were_found') }</Box>}
-                    </Box>
-                  </Tabs.Content>
-                  <Tabs.Content value="instagram">
-                    <Button bgColor="#405DE6" color="#FFFFFF" width="100%" onClick={() => connectAccounts('instagram')}>
-                      { t('connect_accounts') }
-                    </Button>
-                    <Box>
-                    {Object.keys(networksList).length > 0 && (networksList as { instagram: Account[]; }).instagram.length > 0 ? (
-                      (networksList as { instagram: Account[]; }).instagram.map((account, index) => (
-                        <Group attached className="network-account" key={index}>
-                          <Button variant="outline" size="sm">
-                            {account.name}
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <HiTrash style={{ fontSize: "14px" }} />
-                          </Button>
-                        </Group>
-                      ))
-                    ) : <Box className="no-accounts-found">{ t('no_accounts_were_found') }</Box>}
                     </Box>
                   </Tabs.Content>
                 </Tabs.Root>
@@ -339,226 +468,19 @@ const Threads = () => {
         </Flex>
       </Box>
       <Box px={4}>
-        <List.Root className="chakra-list">
-          <List.Item>
-            <Link className="new-message">
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 1
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 2
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 3
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 4
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 5
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 6
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 7
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 8
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 9
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
-          <List.Item>
-            <Link>
-              <Flex justifyContent={'space-between'}>
-                <Box paddingTop="3px">
-                  <Box
-                    display="inline-block"
-                    verticalAlign="top"
-                    marginRight="5px"
-                    fontSize="xl"
-                  >
-                    <HiDocumentText />
-                  </Box>
-                  Item 10
-                </Box>
-                <Box lineHeight="25px" fontSize="13px" color="grey.100">
-                  15 minutes ago
-                </Box>
-              </Flex>
-            </Link>
-          </List.Item>
+        <List.Root className="list">
+          { (pagination.items.length > 0)?pagination.items:(
+            <List.Item p="10px 15px" fontFamily="message" fontSize="14px" color="black.100">
+              { t('no_threads_were_found') }
+            </List.Item>
+          ) }
         </List.Root>
       </Box>
-      <Box display={'flex'} justifyContent={'space-between'} px={4} py={4} fontFamily="button" fontSize="14px" color="black.100">
-        <Box>
-          1 - 5 of 200
-        </Box>
-        <PaginationRoot
-          count={10}
-          pageSize={2}
-          defaultPage={1}
-          size="xs"
-        >
-          <HStack>
-            <PaginationPrevTrigger />
-            <PaginationItems />
-            <PaginationNextTrigger />
-          </HStack>
-        </PaginationRoot>
-      </Box>          
+      {(!isLoading && (pagination.items.length > 0))?(
+        <Box display={'flex'} justifyContent={'space-between'} px={4} py={4} fontFamily="button" fontSize="14px" color="black.100">
+          <Pagination page={pagination.page} total={pagination.total} limit={pagination.limit} onDataSend={changePage} />
+        </Box>         
+      ):''}
     </>);
 
 }

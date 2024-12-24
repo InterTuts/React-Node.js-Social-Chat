@@ -22,6 +22,9 @@ const Connect = ({ slug }: { slug: string }): JSX.Element => {
     // Get the words by group
     const t = useTranslations('account');
 
+    // Message holder
+    const [message, setMessage] = useState<string | null>(null);  
+
     // Errors holder
     const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +38,19 @@ const Connect = ({ slug }: { slug: string }): JSX.Element => {
                 
                 // Verify if url is successfully
                 if (response.data.success) {
-                    router.push(response.data.content ?? '');
+                    //router.push(response.data.content ?? '');
+                    setMessage(response.data.message);
+                    // Wait until the message is showed
+                    setTimeout(function () {
+                        // Verify if opener exists
+                        if (window.opener) {
+                        // Reload accounts
+                        window.opener.dispatchEvent(new Event('reloadAccounts'));
+                        }
+
+                        // Close modal
+                        window.close();
+                    }, 1500);
                 } else {
                     setError(response.data.message);
                 }
@@ -57,6 +72,26 @@ const Connect = ({ slug }: { slug: string }): JSX.Element => {
 
     return (
         <>
+            {(message)?(
+                <Box
+                    m="15px"
+                    p="10px 15px"
+                    fontFamily="message"
+                    fontSize="14px"
+                    bg="blue.100"
+                    color="black.100"
+                >
+                    <Box
+                        display="inline-block"
+                        verticalAlign="top"
+                        marginRight="5px"
+                        fontSize="xl"
+                    >
+                        <HiBell />
+                    </Box>
+                    { message }
+                </Box>            
+            ):''} 
             {(error)?(
                 <Box
                     m="15px"

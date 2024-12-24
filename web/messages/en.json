@@ -48,6 +48,22 @@
       "save_accounts": "Save Accounts",
       "save_accounts_description": "Save accounts and subscribe to webhooks.",
       "no_accounts_were_found": "No accounts were found.",
-      "no_pages_were_found": "No pages were found."
+      "no_pages_were_found": "No pages were found.",
+      "ago": "ago",
+      "just_now": "just now",
+      "minutes": "minutes",
+      "hours": "hours",
+      "days": "days", 
+      "never": "never",
+      "chat": "Chat",
+      "of": "of",
+      "results": "results",
+      "chat_description": "Chat page for direct messages.",
+      "search_for_threads": "Search for threads ...",
+      "enter_a_reply": "Enter a reply ...",
+      "no_threads_were_found": "No threads were found.",
+      "me": "Me",
+      "load_more_messages": "Load more messages ...",
+      "no_thread_found": "The thread was not found."
     }
 }

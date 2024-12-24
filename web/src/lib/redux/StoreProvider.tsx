@@ -15,7 +15,7 @@ export default function StoreProvider({
 }: {
   children: React.ReactNode
 }) {
-  const storeRef = useRef<AppStore>()
+  const storeRef = useRef<AppStore>(null)
   if (!storeRef.current) {
     // Create the store instance the first time this renders
     storeRef.current = makeStore()
@@ -25,8 +25,9 @@ export default function StoreProvider({
     const handleBeforeUnload = () => {
       // Get cookies
       const cookies = nookies.get(null);
+      
       // Check if the delete_jwt cookie is saved
-      if (cookies.delete_jwt) {
+      if (cookies.delete_jwt && (Date.now()/1000) - parseInt(cookies.delete_jwt) > 3600) {
         nookies.destroy(null, 'delete_jwt', { path: '/' });
         nookies.destroy(null, 'jwt_token', { path: '/' });
       }
@@ -37,6 +38,7 @@ export default function StoreProvider({
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     }
+
   }, []);
 
   return <Provider store={storeRef.current}>{children}</Provider>

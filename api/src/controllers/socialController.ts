@@ -253,10 +253,10 @@ const registerWithSocial = async (req: Request, res: Response) => {
 const connectAccounts = async (req: Request, res: Response) => {
 
     // Get the dynamic parameter attribute
-    const slug = req.params.slug;
+    const network = req.params.network;
 
-    // Verify if slug is supported
-    if ( slug === 'facebook' ) {
+    // Verify if network is supported
+    if ( network === 'facebook' ) {
 
       // Permissions to request
       const permissions = [
@@ -270,7 +270,7 @@ const connectAccounts = async (req: Request, res: Response) => {
         client_id: process.env.FACEBOOK_APP_ID as string,
         state: Math.floor(Date.now() / 1000).toString(),
         response_type: 'code',
-        redirect_uri: `${req.protocol}://${req.get('host')}/networks/callback/facebook`,
+        redirect_uri: 'https://wp.midrub.com/callback.php', //`${process.env.WEBSITE_URL}/networks/callback/facebook`,
         scope: permissions.join(',')
       });
 
@@ -288,7 +288,7 @@ const connectAccounts = async (req: Request, res: Response) => {
       // Return failed response
       res.status(200).json({
         success: false,
-        message: i18n.__('invalid_slug_provided')
+        message: i18n.__('invalid_network_provided')
       });
 
     }
@@ -314,7 +314,7 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
   const { code } = req.body;
 
   // Get the dynamic parameter attribute
-  const slug = req.params.slug;
+  const network = req.params.network;
 
   try {
 
@@ -323,7 +323,7 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
       client_id: process.env.FACEBOOK_APP_ID,
       client_secret: process.env.FACEBOOK_APP_SECRET,
       grant_type: 'authorization_code',
-      redirect_uri: `${req.protocol}://${req.get('host')}/networks/callback/facebook`,
+      redirect_uri: 'https://wp.midrub.com/callback.php',//`${process.env.WEBSITE_URL}/networks/callback/facebook`,
       code: code,
     };
 
@@ -368,49 +368,76 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
       if (accounts.length > 0) {
 
         // Prepare the accounts to save or update
-        const accountsList = accounts.map((account: { id: number; access_token: string; name: string; }) => ({
-          updateOne: {
-            filter: {
-              user: user?._id,
-              network_name: 'facebook_pages',
-              net_id: account.id
-            },
-            update: { $set: {
-              name: account.name,
-              token: account.access_token
-            }},
-            upsert: true
-          },
-        }));
+        const accountsList = (await Promise.all(accounts.map(async (account: { id: number; access_token: string; name: string; }) => {
 
-        // Save or update the accounts list
-        networks
-        .bulkWrite(accountsList)
-        .then(() => {
-          // Return success response
-          if (!res.headersSent) {
-            return res.status(201).json({
-              success: true,
-              message: i18n.__('facebook_pages_were_connected_successfully'),
+          try {
+            
+            // Subscribe params
+            const params = {
+              access_token: account.access_token,
+              subscribed_fields: 'messages'
+            };
+
+            // Url for app subscribe
+            const url = `https://graph.facebook.com/${process.env.FACEBOOK_API_VERSION}/${account.id}/subscribed_apps?${querystring.stringify(params)}`;
+
+            // Perform the HTTP POST request
+            const response = await axios.post(url, {}, {
+              headers: {
+                  'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.0.3705; .NET CLR 1.1.4322)'
+              },
+              timeout: 30000
             });
+            
+            // Check if the Facebook page wasn't subscribed to our Facebook App
+            if (response.status !== 200) {
+              console.error(`${i18n.__('failed_subscribe_account')} ${account.id}: ${response.status} - ${response.statusText}`);
+              return null;
+            } else {
+              return {
+                updateOne: {
+                  filter: {
+                    user: user?._id,
+                    network_name: 'facebook_pages',
+                    net_id: account.id
+                  },
+                  update: { $set: {
+                    name: account.name,
+                    token: account.access_token
+                  }},
+                  upsert: true
+                }
+              };
+
+            }
+              
+          } catch (error: unknown) {
+            console.error(`${i18n.__('error_subscribing_account')} ${account.id}: ${error instanceof Error ? error.message : i18n.__('an_unknown_error_occurred')}`);
+            return null;
           }
-        })
-        .catch((error) => {
-          // Return failure response
-          if (!res.headersSent) {
-            return res.status(500).json({
-              success: false,
-              message: error instanceof Error ? error.message : i18n.__('an_unknown_error_occurred'),
-            });
-          }
+
+        })))
+        .filter((account: { id: number; access_token: string; name: string; }) => account !== null);
+            
+        // Bulk update or insert the accounts
+        await networks.bulkWrite(accountsList);
+
+        // Verify if the header is sent before show a success response
+        if (!res.headersSent) {
+          return res.status(201).json({
+            success: true,
+            message: i18n.__('facebook_pages_were_connected_successfully'),
+          });
+        }
+
+      } else {
+
+        return res.status(200).json({
+          success: false,
+          message: i18n.__('no_facebook_pages_were_found')
         });
 
       }
-
-      return res.status(200).json({
-        success: false,
-        message: i18n.__('no_facebook_pages_were_found')
-      });
 
     }
 
@@ -420,11 +447,12 @@ const saveAccounts = async (req: AuthenticatedRequest, res: Response) => {
     });    
 
   } catch (error) {
-    // Return failed response
-    return res.status(200).json({
-      success: false,
-      message: (error instanceof Error)?error.message:i18n.__('an_unknown_error_occurred')
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : i18n.__('an_unknown_error_occurred'),
+      });
+    }
   }
 };
 
@@ -468,4 +496,78 @@ const networksList = async (req: AuthenticatedRequest, res: Response) => {
 
 };
 
-export { socialConnect, getSocialCode, registerWithSocial, connectAccounts, saveAccounts, networksList };
+/**
+ * Delete an account
+ *
+ * @param Request req
+ * @param Response res
+ */
+const deleteAccount = async (req: AuthenticatedRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(200).json({ errors: errors.array() });
+  }
+
+  // Get the dynamic parameter attribute
+  const network = req.params.network;
+
+  // Get the dynamic parameter attribute
+  const slug = req.params.slug;
+
+  // Get the user data
+  const { user } = req;  
+
+  try {
+
+    // Get account's data by slug
+    const accountData = await networks.findOne({_id: {_id: slug}, user: user});
+
+    // Verify if account exists
+    if (accountData) {
+      // Subscribe params
+      const params = {
+        access_token: accountData.token
+      };
+
+      // Url for app subscribe
+      const url = `https://graph.facebook.com/${process.env.FACEBOOK_API_VERSION}/${accountData.net_id}/subscribed_apps?${querystring.stringify(params)}`;
+
+      // Unsubscribe the page from webhook
+      await axios.delete(url, {
+        headers: {
+            'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.0.3705; .NET CLR 1.1.4322)'
+        },
+        timeout: 30000
+      });
+      
+    }
+    
+  } catch (error: unknown) {
+    console.error(`${i18n.__('error_subscribing_account')}: ${error instanceof Error ? error.message : i18n.__('an_unknown_error_occurred')}`);
+  }
+  
+  // Delete the user
+  networks.deleteOne({ _id: {_id: slug}, user: user })
+  .then(result => {
+    if (result.deletedCount === 1) {
+      return res.status(200).json({
+        success: true,
+        message: i18n.__('account_was_deleted_successfully')
+      });
+    } else {
+      return res.status(200).json({
+        success: false,
+        message: i18n.__('account_was_not_deleted_successfully')
+      }); 
+    }
+  })
+  .catch(error => {
+    return res.status(200).json({
+      success: false,
+      message: error instanceof Error ? error.message : i18n.__('an_unknown_error_occurred')
+    });   
+  });   
+
+};
+
+export { socialConnect, getSocialCode, registerWithSocial, connectAccounts, saveAccounts, networksList, deleteAccount };

@@ -27,12 +27,14 @@ authRoute.post(
       .notEmpty()
       .trim()
       .isEmail()
+      .escape()
       .withMessage(i18n.__('invalid_email_address')),
     body('password')
       .notEmpty()
       .trim()
       .isLength({ min: 8, max: 20 })
-      .withMessage(i18n.__('password_incorrect_length')),
+      .escape()
+      .withMessage(i18n.__('password_incorrect_length'))
   ],
   register,
 );
@@ -42,10 +44,12 @@ authRoute.post(
     body('email')
       .trim()
       .isEmail()
+      .escape()
       .withMessage(i18n.__('invalid_email_address')),
     body('password')
       .trim()
       .isLength({ min: 8, max: 20 })
+      .escape()
       .withMessage(i18n.__('password_incorrect_length')),
   ],
   login,
@@ -56,6 +60,7 @@ authRoute.post(
     body('email')
       .trim()
       .isEmail()
+      .escape()
       .withMessage(i18n.__('invalid_email_address')),
   ],
   reset,
@@ -66,14 +71,17 @@ authRoute.post(
     body('code')
       .trim()
       .notEmpty()
+      .escape()
       .withMessage(i18n.__('password_reset_code_required')),
     body('password')
       .trim()
       .isLength({ min: 8, max: 20 })
+      .escape()
       .withMessage(i18n.__('password_incorrect_length')),
     body('repeatPassword')
       .trim()
       .isLength({ min: 8, max: 20 })
+      .escape()
       .withMessage(i18n.__('password_incorrect_length')),
   ],
   changePassword,
@@ -85,6 +93,7 @@ authRoute.post(
     body('code')
       .trim()
       .notEmpty()
+      .escape()
       .withMessage(i18n.__('authorization_code_not_provided')),
   ],
   getSocialCode,
@@ -95,14 +104,17 @@ authRoute.post(
     body('social_id')
       .trim()
       .notEmpty()
+      .escape()
       .withMessage(i18n.__('social_id_required')),
     body('email')
       .trim()
       .isEmail()
+      .escape()
       .withMessage(i18n.__('invalid_email_address')),
     body('password')
       .trim()
       .isLength({ min: 8, max: 20 })
+      .escape()
       .withMessage(i18n.__('password_incorrect_length')),
   ],
   registerWithSocial,
